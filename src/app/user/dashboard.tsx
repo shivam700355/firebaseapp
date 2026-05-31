@@ -1,6 +1,7 @@
 import { CustomButton } from "@/components/CustomButton";
 import { Header } from "@/components/Header";
 import { ScreenWrapper } from "@/components/ScreenWrapper";
+import { useExitAppConfirmation } from "@/hooks/useExitAppConfirmation";
 import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import { useRouter } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
@@ -8,6 +9,8 @@ import { StyleSheet, Text, View } from "react-native";
 export default function UserDashboard() {
   const { ready, user } = useProtectedRoute("user");
   const router = useRouter();
+
+  useExitAppConfirmation(ready);
 
   if (!ready) {
     return null;
@@ -19,6 +22,7 @@ export default function UserDashboard() {
       <View style={styles.grid}>
         <CustomButton title="My Profile" onPress={() => router.push("/user/profile")} style={styles.actionButton} />
         <CustomButton title="Chats" onPress={() => router.push("/user/chat-list")} style={styles.actionButton} />
+        <CustomButton title="Find Users" onPress={() => router.push("/user/users")} style={styles.actionButton} variant="secondary" />
         <CustomButton title="Edit Profile" onPress={() => router.push("/user/edit-profile")} variant="secondary" style={styles.actionButton} />
       </View>
       <Text style={styles.help}>Use the bottom actions to keep your profile and conversations up to date.</Text>

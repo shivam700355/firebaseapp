@@ -3,7 +3,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Header } from "@/components/Header";
 import { ScreenWrapper } from "@/components/ScreenWrapper";
 import { useProtectedRoute } from "@/hooks/useProtectedRoute";
-import { fetchUserChats } from "@/services/chatService";
+import { subscribeToUserChats } from "@/services/chatService";
 import { getUserProfile } from '@/services/userService';
 import type { ChatItem } from "@/utils/types";
 import { useRouter } from "expo-router";
@@ -18,29 +18,37 @@ export default function UserChatList() {
   const router = useRouter();
 
   useEffect(() => {
-    const loadChats = async () => {
-      if (!user) return;
-      setLoading(true);
-      const results = await fetchUserChats(user.uid);
+    if (!ready || !user) return;
+    setLoading(true);
+
+    const unsubscribe = subscribeToUserChats(user.uid, (results) => {
       setChats(results);
-      // build name map for participants
-      const ids = new Set<string>();
-      results.forEach((c) => c.participants.forEach((id) => ids.add(id)));
-      ids.delete(user.uid);
-      const idArray = Array.from(ids);
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, [ready, user]);
+
+  useEffect(() => {
+    const ids = new Set<string>();
+    chats.forEach((chat) => chat.participants.forEach((id) => ids.add(id)));
+    ids.delete(user?.uid ?? "");
+
+    const idArray = Array.from(ids);
+    if (idArray.length === 0) {
+      setNamesMap({});
+      return;
+    }
+
+    (async () => {
       const profiles = await Promise.all(idArray.map((id) => getUserProfile(id)));
       const map: Record<string, string> = {};
       idArray.forEach((id, i) => {
         map[id] = profiles[i]?.name || id;
       });
       setNamesMap(map);
-      setLoading(false);
-    };
-
-    if (ready) {
-      loadChats();
-    }
-  }, [ready, user]);
+    })();
+  }, [chats, user]);
 
   const getLabel = (chat: ChatItem) => {
     const participants = chat.participants.filter((id) => id !== user?.uid);

@@ -1,6 +1,7 @@
 import { CustomButton } from "@/components/CustomButton";
 import { Header } from "@/components/Header";
 import { ScreenWrapper } from "@/components/ScreenWrapper";
+import { useExitAppConfirmation } from "@/hooks/useExitAppConfirmation";
 import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import { useRouter } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
@@ -8,6 +9,8 @@ import { StyleSheet, Text, View } from "react-native";
 export default function AdminDashboard() {
   const { ready, user } = useProtectedRoute("admin");
   const router = useRouter();
+
+  useExitAppConfirmation(ready);
 
   if (!ready) {
     return null;

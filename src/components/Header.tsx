@@ -12,10 +12,20 @@ interface Props {
 
 export function Header({ title, subtitle, leftAction, rightAction, profileLink }: Props) {
   const router = useRouter();
+  const canGoBack = router.canGoBack?.();
 
   return (
     <View style={styles.root}>
-      {leftAction ? <View style={styles.left}>{leftAction}</View> : null}
+      <View style={styles.left}>
+        {leftAction ? (
+          leftAction
+        ) : canGoBack ? (
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Text style={styles.backText}>Back</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
       <View style={styles.center}>
         <Text style={styles.title}>{title}</Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
@@ -61,6 +71,16 @@ const styles = StyleSheet.create({
   },
   action: {
     marginBottom: 4,
+  },
+  backButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+  },
+  backText: {
+    color: '#111827',
+    fontWeight: '700',
   },
   meButton: {
     marginLeft: 8,

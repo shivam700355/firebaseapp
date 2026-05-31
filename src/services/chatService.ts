@@ -1,7 +1,6 @@
 import { db } from "@/firebase/config";
 import { ChatItem, MessageItem } from "@/utils/types";
 import { addDoc, collection, doc, getDoc, getDocs, increment, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
-import { sendPushNotification } from "./notificationService";
 
 const chatsCollection = collection(db, "chats");
 
@@ -9,6 +8,13 @@ export const fetchUserChats = async (uid: string): Promise<ChatItem[]> => {
   const chatQuery = query(chatsCollection, where("participants", "array-contains", uid), orderBy("updatedAt", "desc"));
   const snapshot = await getDocs(chatQuery as any);
   return snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() as Omit<ChatItem, "id">) }));
+};
+
+export const subscribeToUserChats = (uid: string, callback: (chats: ChatItem[]) => void) => {
+  const chatQuery = query(chatsCollection, where("participants", "array-contains", uid), orderBy("updatedAt", "desc"));
+  return onSnapshot(chatQuery, (snapshot) => {
+    callback(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() as Omit<ChatItem, "id">) })));
+  });
 };
 
 export const createOrGetChat = async (participantIds: string[], initialMessage?: string): Promise<ChatItem> => {
@@ -69,19 +75,7 @@ export const sendMessage = async (chatId: string, senderId: string, text: string
       }
     });
 
-    // Send push notifications to other participants (if they have saved tokens)
-    const senderDoc = await getDoc(doc(db, "users", senderId));
-    const senderName = senderDoc?.data()?.name || "Unknown";
-
-    participants.forEach(async (participant) => {
-      if (participant !== senderId) {
-        const recipientDoc = await getDoc(doc(db, "users", participant));
-        const recipientToken = recipientDoc?.data()?.expoPushToken;
-        if (recipientToken) {
-          await sendPushNotification(recipientToken, `${senderName}`, text, { chatId });
-        }
-      }
-    });
+    // Notification support has been removed from this version of the app.
   }
 
   await updateDoc(chatRef, updatePayload);

@@ -1,8 +1,9 @@
-import { onAuthStateChanged } from "firebase/auth";
-import { createContext, useContext, useEffect, useState } from "react";
 import { auth } from "@/firebase/config";
 import { getUserProfile, setUserStatus } from "@/services/userService";
 import { UserProfile } from "@/utils/types";
+import { onAuthStateChanged } from "firebase/auth";
+import { createContext, useContext, useEffect, useState } from "react";
+import { AppState, AppStateStatus } from "react-native";
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -51,6 +52,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    const handleAppStateChange = async (nextState: AppStateStatus) => {
+      if (!user?.uid) return;
+
+      if (nextState === "active") {
+        await setUserStatus(user.uid, "online");
+      }
+
+      if (nextState === "background" || nextState === "inactive") {
+        await setUserStatus(user.uid, "offline");
+      }
+    };
+
+    const subscription = AppState.addEventListener("change", handleAppStateChange);
+    return () => {
+      subscription.remove();
+      if (user?.uid) {
+        setUserStatus(user.uid, "offline").catch(() => null);
+      }
+    };
+  }, [user]);
 
   return <AuthContext.Provider value={{ user, loading, setUser }}>{children}</AuthContext.Provider>;
 };

@@ -1,5 +1,6 @@
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, ViewStyle } from "react-native";
+import { COLORS, SIZES } from '@/theme';
 import type { StyleProp } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, ViewStyle } from "react-native";
 
 interface Props {
   title: string;
@@ -12,15 +13,20 @@ interface Props {
 export function CustomButton({ title, onPress, loading = false, variant = "primary", style }: Props) {
   return (
     <TouchableOpacity
-      style={[styles.button, variant === "secondary" && styles.secondary, variant === "ghost" && styles.ghost, style]}
+      style={[
+        styles.button,
+        variant === 'secondary' && styles.secondary,
+        variant === 'ghost' && styles.ghost,
+        style,
+      ]}
       onPress={onPress}
       disabled={loading}
-      activeOpacity={0.8}
+      activeOpacity={0.85}
     >
       {loading ? (
-        <ActivityIndicator color={variant === "ghost" ? "#2563EB" : "#fff"} />
+        <ActivityIndicator color={variant === 'ghost' ? COLORS.primary : '#fff'} />
       ) : (
-        <Text style={[styles.text, variant === "ghost" && styles.ghostText]}>{title}</Text>
+        <Text style={[styles.text, variant === 'ghost' && styles.ghostText]}>{title}</Text>
       )}
     </TouchableOpacity>
   );
@@ -28,25 +34,29 @@ export function CustomButton({ title, onPress, loading = false, variant = "prima
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: "#2563EB",
-    paddingVertical: 15,
-    paddingHorizontal: 18,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: SIZES.radius,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 2,
   },
   secondary: {
-    backgroundColor: "#F3F4F6",
+    backgroundColor: COLORS.subtle,
   },
   ghost: {
-    backgroundColor: "transparent",
+    backgroundColor: 'transparent',
   },
   text: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 16,
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
   },
   ghostText: {
-    color: "#2563EB",
+    color: COLORS.primary,
   },
 });

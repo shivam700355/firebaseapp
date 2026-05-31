@@ -2,10 +2,12 @@ import { CustomButton } from "@/components/CustomButton";
 import { Header } from "@/components/Header";
 import { ScreenWrapper } from "@/components/ScreenWrapper";
 import { useProtectedRoute } from "@/hooks/useProtectedRoute";
-import { getChatDetails, sendMessage, subscribeToMessages } from "@/services/chatService";
+import { getChatDetails, markChatRead, sendMessage, subscribeToMessages } from "@/services/chatService";
+import { getUserProfile } from '@/services/userService';
+import { COLORS, SIZES } from '@/theme';
 import { formatTimestamp } from "@/utils/format";
 import type { MessageItem } from "@/utils/types";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from "react-native";
 
@@ -21,10 +23,22 @@ export default function UserChatDetail() {
 
     const unsubscribe = subscribeToMessages(chatId, setMessages);
 
-    getChatDetails(chatId).then((chat) => {
+    if (user) {
+      markChatRead(chatId, user.uid).catch(() => null);
+    }
+
+    getChatDetails(chatId).then(async (chat) => {
       if (chat && user) {
         const partnerIds = chat.participants.filter((id) => id !== user.uid);
-        setChatLabel(partnerIds.length === 1 ? partnerIds[0] : "Conversation");
+        if (partnerIds.length === 1) {
+          const profile = await getUserProfile(partnerIds[0]);
+          setChatLabel(profile?.name || partnerIds[0]);
+        } else if (partnerIds.length > 1) {
+          const names = await Promise.all(partnerIds.map((id) => getUserProfile(id).then((p) => p?.name || id)));
+          setChatLabel(names.join(', '));
+        } else {
+          setChatLabel('Conversation');
+        }
       }
     });
 
@@ -41,17 +55,31 @@ export default function UserChatDetail() {
     return null;
   }
 
+  const router = useRouter();
+
   return (
     <ScreenWrapper>
-      <Header title={chatLabel} subtitle="Send updates and messages in real time." />
-      <View style={styles.messages}>
-        {messages.map((message) => (
-          <View key={message.id} style={[styles.messageBubble, message.senderId === user?.uid ? styles.outgoing : styles.incoming]}>
-            <Text style={[styles.messageText, message.senderId === user?.uid ? styles.outgoingText : styles.incomingText]}>{message.text}</Text>
-            <Text style={styles.messageTime}>{formatTimestamp(message.createdAt)}</Text>
-          </View>
-        ))}
+      <Header
+        leftAction={<CustomButton title="Back" onPress={() => router.back()} variant="ghost" />}
+        title={chatLabel}
+        subtitle="Send updates and messages in real time."
+        rightAction={<CustomButton title="Inbox" onPress={() => router.push('/user/chat-list')} variant="secondary" />}
+      />
+      <View style={styles.chatContainer}>
+        <View style={styles.messages}>
+          {messages.map((message) => (
+            <View key={message.id} style={[styles.messageBubble, message.senderId === user?.uid ? styles.outgoing : styles.incoming]}>
+              <Text style={[styles.messageText, message.senderId === user?.uid ? styles.outgoingText : styles.incomingText]}>{message.text}</Text>
+              <Text style={styles.messageTime}>{formatTimestamp(message.createdAt)}</Text>
+            </View>
+          ))}
+        </View>
       </View>
+      <View style={styles.bottomRow}>
+        <CustomButton title="Back" onPress={() => router.back()} variant="secondary" style={{ flex: 1, marginRight: 8 }} />
+        <CustomButton title="Inbox" onPress={() => router.push('/user/chat-list')} variant="ghost" style={{ flex: 1, marginLeft: 8 }} />
+      </View>
+
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.inputRow}>
         <TextInput style={styles.input} value={text} onChangeText={setText} placeholder="Write a message" placeholderTextColor="#9CA3AF" />
         <CustomButton title="Send" onPress={handleSend} />
@@ -61,42 +89,61 @@ export default function UserChatDetail() {
 }
 
 const styles = StyleSheet.create({
+  chatContainer: {
+    width: '100%',
+    maxWidth: SIZES.containerWidth,
+    alignSelf: 'center',
+    flex: 1,
+    justifyContent: 'center',
+  },
   messages: {
     flex: 1,
+    paddingVertical: SIZES.spacing / 2,
+    gap: 8,
   },
   messageBubble: {
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 20,
-    maxWidth: "85%",
+    maxWidth: '80%',
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
   },
   incoming: {
-    backgroundColor: "#F3F4F6",
-    alignSelf: "flex-start",
+    backgroundColor: COLORS.surface,
+    alignSelf: 'flex-start',
   },
   outgoing: {
-    backgroundColor: "#2563EB",
-    alignSelf: "flex-end",
+    backgroundColor: COLORS.primary,
+    alignSelf: 'flex-end',
   },
   messageText: {
     fontSize: 15,
     marginBottom: 8,
   },
   incomingText: {
-    color: "#111827",
+    color: COLORS.text,
   },
   outgoingText: {
-    color: "#fff",
+    color: '#fff',
   },
   messageTime: {
-    color: "#6B7280",
+    color: COLORS.muted,
     fontSize: 12,
-    textAlign: "right",
+    textAlign: 'right',
   },
   inputRow: {
-    marginTop: 16,
-    flexDirection: "row",
-    alignItems: "center",
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
+    width: '100%',
+    maxWidth: SIZES.containerWidth,
+    alignSelf: 'center',
+    paddingVertical: 8,
   },
   input: {
     flex: 1,
@@ -107,5 +154,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     backgroundColor: "#fff",
     color: "#111827",
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    width: '100%',
+    marginBottom: 12,
   },
 });

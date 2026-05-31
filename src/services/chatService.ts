@@ -1,6 +1,7 @@
 import { db } from "@/firebase/config";
 import { ChatItem, MessageItem } from "@/utils/types";
-import { addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, getDocs, increment, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { sendPushNotification } from "./notificationService";
 
 const chatsCollection = collection(db, "chats");
 
@@ -52,10 +53,44 @@ export const sendMessage = async (chatId: string, senderId: string, text: string
 
   await addDoc(messagesRef, message as any);
   const chatRef = doc(db, "chats", chatId);
-  await updateDoc(chatRef, {
+  const chatDoc = await getDoc(chatRef);
+  const updatePayload: Record<string, unknown> = {
     lastMessage: text,
     updatedAt: serverTimestamp(),
     [`unread.${senderId}`]: 0,
+  };
+
+  if (chatDoc.exists()) {
+    const chatData = chatDoc.data() as { participants?: unknown };
+    const participants = Array.isArray(chatData.participants) ? (chatData.participants as string[]) : [];
+    participants.forEach((participant) => {
+      if (participant !== senderId) {
+        updatePayload[`unread.${participant}`] = increment(1);
+      }
+    });
+
+    // Send push notifications to other participants (if they have saved tokens)
+    const senderDoc = await getDoc(doc(db, "users", senderId));
+    const senderName = senderDoc?.data()?.name || "Unknown";
+
+    participants.forEach(async (participant) => {
+      if (participant !== senderId) {
+        const recipientDoc = await getDoc(doc(db, "users", participant));
+        const recipientToken = recipientDoc?.data()?.expoPushToken;
+        if (recipientToken) {
+          await sendPushNotification(recipientToken, `${senderName}`, text, { chatId });
+        }
+      }
+    });
+  }
+
+  await updateDoc(chatRef, updatePayload);
+};
+
+export const markChatRead = async (chatId: string, userId: string): Promise<void> => {
+  const chatRef = doc(db, "chats", chatId);
+  await updateDoc(chatRef, {
+    [`unread.${userId}`]: 0,
   });
 };
 

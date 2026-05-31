@@ -4,6 +4,7 @@ import { Header } from "@/components/Header";
 import { ScreenWrapper } from "@/components/ScreenWrapper";
 import { useProtectedRoute } from "@/hooks/useProtectedRoute";
 import { fetchUserChats } from "@/services/chatService";
+import { getUserProfile } from '@/services/userService';
 import type { ChatItem } from "@/utils/types";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -12,6 +13,7 @@ import { StyleSheet, View } from "react-native";
 export default function AdminChatList() {
   const { ready, user } = useProtectedRoute("admin");
   const [chats, setChats] = useState<ChatItem[]>([]);
+  const [namesMap, setNamesMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -21,6 +23,17 @@ export default function AdminChatList() {
       setLoading(true);
       const results = await fetchUserChats(user.uid);
       setChats(results);
+      // build name map for participants
+      const ids = new Set<string>();
+      results.forEach((c) => c.participants.forEach((id) => ids.add(id)));
+      ids.delete(user.uid);
+      const idArray = Array.from(ids);
+      const profiles = await Promise.all(idArray.map((id) => getUserProfile(id)));
+      const map: Record<string, string> = {};
+      idArray.forEach((id, i) => {
+        map[id] = profiles[i]?.name || id;
+      });
+      setNamesMap(map);
       setLoading(false);
     };
 
@@ -31,12 +44,15 @@ export default function AdminChatList() {
 
   const getLabel = (chat: ChatItem) => {
     const participants = chat.participants.filter((id) => id !== user?.uid);
-    return participants.length > 0 ? participants.join(", ") : "Conversation";
+    if (participants.length === 0) return "Conversation";
+    return participants.map((id) => namesMap[id] || id).join(', ');
   };
+
+  const totalUnread = chats.reduce((sum, chat) => sum + (user ? chat.unread?.[user.uid] ?? 0 : 0), 0);
 
   return (
     <ScreenWrapper>
-      <Header title="Chats" subtitle="Open a conversation to continue messaging." />
+      <Header title="Chats" subtitle="Open a conversation to continue messaging." profileLink="/admin/profile" />
       {loading ? (
         <EmptyState title="Loading chats" description="Your chat inbox is loading." />
       ) : chats.length === 0 ? (
@@ -48,6 +64,7 @@ export default function AdminChatList() {
               key={chat.id}
               chat={chat}
               participantsLabel={getLabel(chat)}
+              unreadCount={user ? chat.unread?.[user.uid] ?? 0 : 0}
               onPress={() => router.push({ pathname: "/admin/chat/[chatId]", params: { chatId: chat.id } })}
             />
           ))}
@@ -57,7 +74,7 @@ export default function AdminChatList() {
   );
 }
 
-const styles = StyleSheet.create({
+  const styles = StyleSheet.create({
   list: {
     width: "100%",
   },

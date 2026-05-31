@@ -1,38 +1,26 @@
-import {
-  StyleSheet,
-  View,
-} from "react-native";
+import { ScreenWrapper } from "@/components/ScreenWrapper";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "expo-router";
+import { useEffect } from "react";
+import { ActivityIndicator } from "react-native";
 
-import { router } from "expo-router";
+export default function Index() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
-import CustomButton from "../components/CustomButton";
+  useEffect(() => {
+    if (!loading) {
+      if (user) {
+        router.replace(user.role === "admin" ? "/admin/dashboard" : "/user/dashboard");
+      } else {
+        router.replace("/login");
+      }
+    }
+  }, [loading, router, user]);
 
-export default function Home() {
   return (
-    <View style={styles.container}>
-      <CustomButton
-        title="Login"
-        onPress={() =>
-          router.push("/login")
-        }
-      />
-
-      <View style={{ height: 15 }} />
-
-      <CustomButton
-        title="Register"
-        onPress={() =>
-          router.push("/register")
-        }
-      />
-    </View>
+    <ScreenWrapper centered>
+      <ActivityIndicator size="large" color="#2563EB" />
+    </ScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 20,
-  },
-});

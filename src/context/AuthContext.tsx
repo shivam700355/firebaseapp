@@ -1,51 +1,58 @@
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
 import { createContext, useContext, useEffect, useState } from "react";
-import { auth, db } from "../firebase/config";
+import { auth } from "@/firebase/config";
+import { getUserProfile, setUserStatus } from "@/services/userService";
+import { UserProfile } from "@/utils/types";
 
 interface AuthContextType {
-  user: any;
-  setUser: any;
+  user: UserProfile | null;
+  loading: boolean;
+  setUser: (user: UserProfile | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
-export const AuthProvider = ({ children }: any) => {
-  const [user, setUser] = useState<any>(null);
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          const userRef = doc(db, "users", firebaseUser.uid);
-          const snapshot = await getDoc(userRef);
+          const profile = await getUserProfile(firebaseUser.uid);
 
-          if (snapshot.exists()) {
-            setUser({ uid: firebaseUser.uid, ...snapshot.data() });
+          if (profile) {
+            setUser(profile);
+            await setUserStatus(firebaseUser.uid, "online");
           } else {
-            setUser({ uid: firebaseUser.uid, email: firebaseUser.email });
+            setUser({
+              uid: firebaseUser.uid,
+              name: firebaseUser.displayName || "",
+              email: firebaseUser.email || "",
+              role: "user",
+              status: "online",
+            });
           }
-        } catch (e) {
-          setUser({ uid: firebaseUser.uid, email: firebaseUser.email });
+        } catch {
+          setUser({
+            uid: firebaseUser.uid,
+            name: firebaseUser.displayName || "",
+            email: firebaseUser.email || "",
+            role: "user",
+            status: "online",
+          });
         }
       } else {
         setUser(null);
       }
+      setLoading(false);
     });
 
     return unsubscribe;
   }, []);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        setUser,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ user, loading, setUser }}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => useContext(AuthContext);

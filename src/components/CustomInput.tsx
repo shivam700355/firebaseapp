@@ -1,29 +1,37 @@
-import {
-    StyleSheet,
-    TextInput,
-    TextInputProps,
-} from "react-native";
+import { StyleSheet, Text, TextInput, TextInputProps, View } from "react-native";
+import type { StyleProp, ViewStyle } from "react-native";
 
-interface Props extends TextInputProps {}
+interface Props extends TextInputProps {
+  label?: string;
+  containerStyle?: StyleProp<ViewStyle>;
+}
 
-export default function CustomInput(props: Props) {
+export function CustomInput({ label, style, containerStyle, ...props }: Props) {
   return (
-    <TextInput
-      {...props}
-      style={[styles.input, props.style]}
-      placeholderTextColor="#999"
-    />
+    <View style={[styles.container, containerStyle]}>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
+      <TextInput {...props} style={[styles.input, style]} placeholderTextColor="#9CA3AF" />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    marginBottom: 16,
+  },
+  label: {
+    marginBottom: 8,
+    color: "#374151",
+    fontSize: 13,
+    fontWeight: "600",
+  },
   input: {
     height: 50,
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    marginBottom: 15,
+    borderColor: "#E5E7EB",
+    borderRadius: 14,
+    paddingHorizontal: 16,
     backgroundColor: "#fff",
+    color: "#111827",
   },
 });
